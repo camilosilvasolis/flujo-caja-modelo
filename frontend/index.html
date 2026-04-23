@@ -1,0 +1,1042 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Flujo de Caja — Modelo Automático</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet" />
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --navy:   #1F3864;
+    --forest: #385623;
+    --blue-i: #0070C0;
+    --bg:     #F4F6FA;
+    --card:   #FFFFFF;
+    --border: #D8DEE9;
+    --muted:  #6B7280;
+    --text:   #1A1F2E;
+    --accent: #1F3864;
+    --green:  #385623;
+    --danger: #DC2626;
+    --radius: 12px;
+    --shadow: 0 1px 3px rgba(0,0,0,.08), 0 4px 16px rgba(0,0,0,.06);
+  }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    font-size: 14px;
+    line-height: 1.6;
+  }
+
+  /* ── Header ── */
+  .header {
+    background: var(--navy);
+    color: #fff;
+    padding: 0 2rem;
+    display: flex;
+    align-items: center;
+    height: 64px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    box-shadow: 0 2px 8px rgba(0,0,0,.2);
+  }
+  .header-logo {
+    font-family: 'DM Serif Display', serif;
+    font-size: 1.25rem;
+    letter-spacing: -.01em;
+  }
+  .header-logo span { color: #7BAFD4; }
+  .header-sub {
+    margin-left: 1.5rem;
+    font-size: 12px;
+    color: rgba(255,255,255,.55);
+    border-left: 1px solid rgba(255,255,255,.2);
+    padding-left: 1.5rem;
+  }
+  .header-btn {
+    margin-left: auto;
+    background: #fff;
+    color: var(--navy);
+    border: none;
+    border-radius: 8px;
+    padding: .5rem 1.25rem;
+    font-family: 'DM Sans', sans-serif;
+    font-weight: 600;
+    font-size: 13px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+    transition: background .15s, transform .1s;
+  }
+  .header-btn:hover { background: #E8F0F8; }
+  .header-btn:active { transform: scale(.97); }
+  .header-btn svg { width: 16px; height: 16px; }
+  .header-btn.loading { opacity: .7; cursor: wait; }
+
+  /* ── Layout ── */
+  .layout {
+    display: grid;
+    grid-template-columns: 220px 1fr;
+    min-height: calc(100vh - 64px);
+  }
+
+  /* ── Sidebar ── */
+  .sidebar {
+    background: #fff;
+    border-right: 1px solid var(--border);
+    padding: 1.5rem 0;
+    position: sticky;
+    top: 64px;
+    height: calc(100vh - 64px);
+    overflow-y: auto;
+  }
+  .sidebar-section {
+    padding: .25rem 1rem;
+    margin-bottom: .25rem;
+  }
+  .sidebar-label {
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    color: var(--muted);
+    padding: .5rem 1rem;
+    margin-top: .5rem;
+  }
+  .nav-item {
+    display: flex;
+    align-items: center;
+    gap: .625rem;
+    padding: .5rem 1rem;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 13px;
+    color: var(--muted);
+    transition: background .12s, color .12s;
+    text-decoration: none;
+    border: none;
+    background: none;
+    width: 100%;
+    text-align: left;
+  }
+  .nav-item:hover { background: var(--bg); color: var(--text); }
+  .nav-item.active {
+    background: #EDF2FA;
+    color: var(--navy);
+    font-weight: 600;
+  }
+  .nav-dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--border);
+    flex-shrink: 0;
+  }
+  .nav-item.active .nav-dot { background: var(--navy); }
+  .nav-item.done .nav-dot { background: #22C55E; }
+
+  /* ── Main ── */
+  .main {
+    padding: 2rem;
+    max-width: 900px;
+  }
+
+  .section { display: none; }
+  .section.active { display: block; }
+
+  /* ── Section header ── */
+  .section-header {
+    margin-bottom: 1.5rem;
+  }
+  .section-title {
+    font-family: 'DM Serif Display', serif;
+    font-size: 1.75rem;
+    color: var(--navy);
+    margin-bottom: .25rem;
+  }
+  .section-desc {
+    color: var(--muted);
+    font-size: 13px;
+  }
+
+  /* ── Card ── */
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    margin-bottom: 1.5rem;
+    overflow: hidden;
+  }
+  .card-header {
+    padding: .875rem 1.25rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid var(--border);
+  }
+  .card-header-navy  { background: var(--navy); color: #fff; }
+  .card-header-green { background: var(--forest); color: #fff; }
+  .card-title { font-weight: 600; font-size: 13px; letter-spacing: .02em; text-transform: uppercase; }
+  .card-body  { padding: 1.25rem; }
+
+  /* ── Table ── */
+  .data-table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+  .data-table th {
+    text-align: left;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: .05em;
+    color: var(--muted);
+    padding: .5rem .75rem;
+    border-bottom: 2px solid var(--border);
+  }
+  .data-table td {
+    padding: .5rem .75rem;
+    border-bottom: 1px solid #F0F3F8;
+    vertical-align: middle;
+  }
+  .data-table tr:last-child td { border-bottom: none; }
+  .data-table tr:hover td { background: #FAFBFD; }
+
+  /* ── Inputs ── */
+  input[type="text"],
+  input[type="number"],
+  textarea,
+  select {
+    width: 100%;
+    border: 1.5px solid var(--border);
+    border-radius: 7px;
+    padding: .5rem .75rem;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px;
+    color: var(--text);
+    background: #fff;
+    transition: border-color .15s, box-shadow .15s;
+    outline: none;
+  }
+  input[type="number"] { text-align: right; color: var(--blue-i); font-weight: 500; }
+  input:focus, textarea:focus {
+    border-color: var(--navy);
+    box-shadow: 0 0 0 3px rgba(31,56,100,.1);
+  }
+  input.input-blue { color: var(--blue-i); font-weight: 500; }
+  textarea { resize: vertical; min-height: 80px; }
+
+  /* ── Field groups ── */
+  .field-group { display: grid; gap: 1rem; margin-bottom: 1rem; }
+  .field-group-2 { grid-template-columns: 1fr 1fr; }
+  .field-group-3 { grid-template-columns: 1fr 1fr 1fr; }
+  .field-group-4 { grid-template-columns: 1fr 1fr 1fr 1fr; }
+  label {
+    display: block;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--muted);
+    margin-bottom: .35rem;
+  }
+
+  /* ── Buttons ── */
+  .btn {
+    padding: .5rem 1rem;
+    border-radius: 8px;
+    border: none;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: .4rem;
+    transition: all .15s;
+  }
+  .btn-ghost {
+    background: none;
+    color: var(--muted);
+    border: 1px solid var(--border);
+  }
+  .btn-ghost:hover { background: var(--bg); color: var(--text); }
+  .btn-primary { background: var(--navy); color: #fff; }
+  .btn-primary:hover { background: #162a50; }
+  .btn-danger  { background: #FEE2E2; color: var(--danger); }
+  .btn-danger:hover { background: #FECACA; }
+  .btn-add {
+    background: #EDF2FA;
+    color: var(--navy);
+    border: 1.5px dashed #9DB6D8;
+    width: 100%;
+    justify-content: center;
+    margin-top: .75rem;
+    padding: .625rem;
+  }
+  .btn-add:hover { background: #DDE8F5; border-style: solid; }
+
+  .btn-nav {
+    display: flex;
+    gap: .75rem;
+    margin-top: 2rem;
+    justify-content: flex-end;
+  }
+
+  /* ── Years inputs ── */
+  .years-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: .75rem;
+    margin-top: .5rem;
+  }
+  .year-cell label { color: var(--navy); font-weight: 600; }
+
+  /* ── Summary panel ── */
+  .summary-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1rem;
+  }
+  .summary-card {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1rem 1.25rem;
+  }
+  .summary-label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; }
+  .summary-value { font-size: 1.5rem; font-weight: 600; color: var(--navy); margin-top: .25rem; }
+  .summary-value.good  { color: #16A34A; }
+  .summary-value.warn  { color: #D97706; }
+  .summary-value.bad   { color: var(--danger); }
+  .summary-note { font-size: 11px; color: var(--muted); margin-top: .25rem; }
+
+  /* ── Canvas section ── */
+  .canvas-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: .75rem;
+  }
+  .canvas-block {
+    background: #F8FAFF;
+    border: 1.5px solid #C7D7EE;
+    border-radius: 10px;
+    padding: 1rem;
+  }
+  .canvas-block.green-block {
+    background: #F4FBF0;
+    border-color: #BDDDB2;
+  }
+  .canvas-block.gray-block {
+    background: #F9F9F9;
+    border-color: #DDD;
+  }
+  .canvas-block-title {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: .05em;
+    color: var(--navy);
+    margin-bottom: .5rem;
+  }
+  .canvas-block.green-block .canvas-block-title { color: var(--forest); }
+
+  /* ── Toast ── */
+  .toast {
+    position: fixed; bottom: 2rem; right: 2rem;
+    background: #1A1F2E; color: #fff;
+    border-radius: 10px; padding: .875rem 1.25rem;
+    font-size: 13px; font-weight: 500;
+    display: flex; align-items: center; gap: .625rem;
+    transform: translateY(100px); opacity: 0;
+    transition: all .3s cubic-bezier(.34,1.56,.64,1);
+    z-index: 999;
+    max-width: 320px;
+  }
+  .toast.show { transform: translateY(0); opacity: 1; }
+  .toast.error { background: var(--danger); }
+
+  /* ── Progress ── */
+  .progress-bar {
+    height: 3px;
+    background: var(--border);
+    border-radius: 99px;
+    margin-bottom: 1.5rem;
+    overflow: hidden;
+  }
+  .progress-fill {
+    height: 100%;
+    background: var(--navy);
+    border-radius: 99px;
+    transition: width .4s ease;
+  }
+
+  /* ── Row actions ── */
+  .row-actions { display: flex; gap: .25rem; }
+  .icon-btn {
+    border: none; background: none; cursor: pointer;
+    color: var(--muted); padding: .25rem;
+    border-radius: 4px; transition: color .1s, background .1s;
+    display: flex; align-items: center;
+  }
+  .icon-btn:hover { color: var(--danger); background: #FEE2E2; }
+
+  /* ── Totals ── */
+  .total-row td { background: #EDF2FA; font-weight: 600; color: var(--navy); }
+  .total-row-green td { background: #EFF7EA; font-weight: 600; color: var(--forest); }
+
+  .info-box {
+    background: #EDF2FA;
+    border: 1px solid #C7D7EE;
+    border-radius: 8px;
+    padding: .75rem 1rem;
+    font-size: 12px;
+    color: var(--navy);
+    margin-bottom: 1rem;
+  }
+
+  @media (max-width: 768px) {
+    .layout { grid-template-columns: 1fr; }
+    .sidebar { display: none; }
+    .field-group-2, .field-group-3, .field-group-4 { grid-template-columns: 1fr; }
+    .years-grid { grid-template-columns: 1fr 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<!-- Header -->
+<header class="header">
+  <div class="header-logo">Flujo de Caja <span>·</span> Modelo Automático</div>
+  <span class="header-sub">Postulación proyectos I+D aplicada</span>
+  <button class="header-btn" id="downloadBtn" onclick="handleDownload()">
+    <svg viewBox="0 0 20 20" fill="currentColor"><path d="M10.75 2.75a.75.75 0 00-1.5 0v8.614L6.295 8.235a.75.75 0 10-1.09 1.03l4.25 4.5a.75.75 0 001.09 0l4.25-4.5a.75.75 0 00-1.09-1.03l-2.955 3.129V2.75z"/><path d="M3.5 12.75a.75.75 0 00-1.5 0v2.5A2.75 2.75 0 004.75 18h10.5A2.75 2.75 0 0018 15.25v-2.5a.75.75 0 00-1.5 0v2.5c0 .69-.56 1.25-1.25 1.25H4.75c-.69 0-1.25-.56-1.25-1.25v-2.5z"/></svg>
+    Generar Excel
+  </button>
+</header>
+
+<div class="layout">
+  <!-- Sidebar -->
+  <nav class="sidebar">
+    <div class="sidebar-label">Secciones</div>
+    <button class="nav-item active" onclick="goTo('s0')" id="nav-s0">
+      <span class="nav-dot"></span> Proyecto
+    </button>
+    <button class="nav-item" onclick="goTo('s1')" id="nav-s1">
+      <span class="nav-dot"></span> 1. Inversión
+    </button>
+    <button class="nav-item" onclick="goTo('s2')" id="nav-s2">
+      <span class="nav-dot"></span> 2. Costos
+    </button>
+    <button class="nav-item" onclick="goTo('s3')" id="nav-s3">
+      <span class="nav-dot"></span> 3. Flujo de Caja
+    </button>
+    <button class="nav-item" onclick="goTo('s4')" id="nav-s4">
+      <span class="nav-dot"></span> 6. Modelo Negocio
+    </button>
+    <div class="sidebar-label" style="margin-top:1rem">Calculado automáticamente</div>
+    <div style="padding:.25rem 1rem; font-size:12px; color:var(--muted)">4. Payback</div>
+    <div style="padding:.25rem 1rem; font-size:12px; color:var(--muted)">5. Costo/Beneficio</div>
+  </nav>
+
+  <!-- Main -->
+  <main class="main">
+    <div class="progress-bar"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
+
+    <!-- ══════════════════ S0 - PROYECTO ══════════════════ -->
+    <section class="section active" id="s0">
+      <div class="section-header">
+        <h1 class="section-title">Información del Proyecto</h1>
+        <p class="section-desc">Datos generales del proyecto de investigación aplicada</p>
+      </div>
+      <div class="card">
+        <div class="card-body">
+          <div class="field-group">
+            <div>
+              <label>Nombre del Proyecto</label>
+              <input type="text" id="nombre_proyecto" placeholder="Ej: Desarrollo de biofertilizante para cultivos andinos" />
+            </div>
+          </div>
+          <div class="field-group field-group-2">
+            <div>
+              <label>Precio de Venta por Unidad ($)</label>
+              <input type="number" class="input-blue" id="precio_venta" placeholder="12000" value="12000" />
+            </div>
+            <div>
+              <label>Tasa de Interés (VAN / TIR)</label>
+              <input type="number" class="input-blue" id="tasa_interes" placeholder="20" value="20" step="0.1" />
+              <label style="font-size:11px;margin-top:.25rem">% anual (ej: 20 = 20%). Referencia habitual: 12%</label>
+            </div>
+          </div>
+          <div class="field-group field-group-2">
+            <div>
+              <label>Tasa de Descuento para C/B (%)</label>
+              <input type="number" class="input-blue" id="tasa_cb" placeholder="15" value="15" step="0.1" />
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="btn-nav">
+        <button class="btn btn-primary" onclick="goTo('s1')">Siguiente →</button>
+      </div>
+    </section>
+
+    <!-- ══════════════════ S1 - INVERSIÓN ══════════════════ -->
+    <section class="section" id="s1">
+      <div class="section-header">
+        <h1 class="section-title">1. Inversión y Depreciación</h1>
+        <p class="section-desc">Agregar las máquinas, infraestructura y equipos para la producción a escala comercial</p>
+      </div>
+      <div class="info-box">
+        💡 Los campos en azul son datos que ingresará. La tasa y costo de depreciación se calculan automáticamente en el Excel generado.
+      </div>
+      <div class="card">
+        <div class="card-header card-header-navy">
+          <span class="card-title">Maquinaria, Equipos e Infraestructura</span>
+        </div>
+        <div class="card-body" style="padding:0">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th style="width:40%">Nombre del Activo</th>
+                <th style="width:25%">Monto ($)</th>
+                <th style="width:20%">Vida Útil (años)</th>
+                <th style="width:15%"></th>
+              </tr>
+            </thead>
+            <tbody id="inv-tbody">
+            </tbody>
+            <tbody>
+              <tr class="total-row" id="inv-total-row">
+                <td>TOTAL INVERSIÓN</td>
+                <td id="inv-total-monto" style="text-align:right">$0</td>
+                <td></td><td></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div style="padding:.75rem 1.25rem; border-top:1px solid var(--border)">
+          <button class="btn btn-add" onclick="addInversion()">
+            <svg width="14" height="14" viewBox="0 0 20 20" fill="currentColor"><path d="M10.75 4.75a.75.75 0 00-1.5 0v4.5h-4.5a.75.75 0 000 1.5h4.5v4.5a.75.75 0 001.5 0v-4.5h4.5a.75.75 0 000-1.5h-4.5v-4.5z"/></svg>
+            Agregar activo
+          </button>
+        </div>
+      </div>
+      <div class="btn-nav">
+        <button class="btn btn-ghost" onclick="goTo('s0')">← Anterior</button>
+        <button class="btn btn-primary" onclick="goTo('s2')">Siguiente →</button>
+      </div>
+    </section>
+
+    <!-- ══════════════════ S2 - COSTOS ══════════════════ -->
+    <section class="section" id="s2">
+      <div class="section-header">
+        <h1 class="section-title">2. Costos</h1>
+        <p class="section-desc">Costos fijos mensuales y costos variables por unidad producida</p>
+      </div>
+
+      <div class="card">
+        <div class="card-header card-header-navy">
+          <span class="card-title">Costos Fijos Mensuales</span>
+        </div>
+        <div class="card-body" style="padding:0">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th style="width:40%">Tipo de Costo Fijo</th>
+                <th style="width:25%">Costo Mensual ($)</th>
+                <th style="width:25%">Observación</th>
+                <th style="width:10%"></th>
+              </tr>
+            </thead>
+            <tbody id="cf-tbody"></tbody>
+            <tbody>
+              <tr class="total-row">
+                <td>TOTAL COSTOS FIJOS MENSUAL</td>
+                <td id="cf-total-mensual" style="text-align:right">$0</td>
+                <td></td><td></td>
+              </tr>
+              <tr class="total-row">
+                <td>TOTAL COSTOS FIJOS ANUAL</td>
+                <td id="cf-total-anual" style="text-align:right">$0</td>
+                <td></td><td></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div style="padding:.75rem 1.25rem; border-top:1px solid var(--border)">
+          <button class="btn btn-add" onclick="addCostoFijo()">
+            <svg width="14" height="14" viewBox="0 0 20 20" fill="currentColor"><path d="M10.75 4.75a.75.75 0 00-1.5 0v4.5h-4.5a.75.75 0 000 1.5h4.5v4.5a.75.75 0 001.5 0v-4.5h4.5a.75.75 0 000-1.5h-4.5v-4.5z"/></svg>
+            Agregar costo fijo
+          </button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header card-header-green">
+          <span class="card-title">Costos de Producción (por unidad)</span>
+        </div>
+        <div class="card-body" style="padding:0">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th style="width:40%">Tipo de Costo Variable</th>
+                <th style="width:25%">Costo por Unidad ($)</th>
+                <th style="width:25%">Observación</th>
+                <th style="width:10%"></th>
+              </tr>
+            </thead>
+            <tbody id="cv-tbody"></tbody>
+            <tbody>
+              <tr class="total-row-green">
+                <td>COSTO PRODUCCIÓN UNIDAD</td>
+                <td id="cv-total" style="text-align:right">$0</td>
+                <td></td><td></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div style="padding:.75rem 1.25rem; border-top:1px solid var(--border)">
+          <button class="btn btn-add" onclick="addCostoVariable()">
+            <svg width="14" height="14" viewBox="0 0 20 20" fill="currentColor"><path d="M10.75 4.75a.75.75 0 00-1.5 0v4.5h-4.5a.75.75 0 000 1.5h4.5v4.5a.75.75 0 001.5 0v-4.5h4.5a.75.75 0 000-1.5h-4.5v-4.5z"/></svg>
+            Agregar costo variable
+          </button>
+        </div>
+      </div>
+
+      <div class="btn-nav">
+        <button class="btn btn-ghost" onclick="goTo('s1')">← Anterior</button>
+        <button class="btn btn-primary" onclick="goTo('s3')">Siguiente →</button>
+      </div>
+    </section>
+
+    <!-- ══════════════════ S3 - FLUJO DE CAJA ══════════════════ -->
+    <section class="section" id="s3">
+      <div class="section-header">
+        <h1 class="section-title">3. Flujo de Caja</h1>
+        <p class="section-desc">Estimación de ventas por año y visualización del flujo proyectado</p>
+      </div>
+
+      <div class="card">
+        <div class="card-header card-header-navy">
+          <span class="card-title">Cantidad de Unidades Vendidas por Año</span>
+        </div>
+        <div class="card-body">
+          <p style="font-size:12px;color:var(--muted);margin-bottom:1rem">Estimación de demanda. Unidades, kilos, litros u otra medida de tu producto.</p>
+          <div class="years-grid">
+            <div class="year-cell">
+              <label>Año 1</label>
+              <input type="number" class="input-blue" id="qty1" value="12000" />
+            </div>
+            <div class="year-cell">
+              <label>Año 2</label>
+              <input type="number" class="input-blue" id="qty2" value="15000" />
+            </div>
+            <div class="year-cell">
+              <label>Año 3</label>
+              <input type="number" class="input-blue" id="qty3" value="18000" />
+            </div>
+            <div class="year-cell">
+              <label>Año 4</label>
+              <input type="number" class="input-blue" id="qty4" value="22000" />
+            </div>
+            <div class="year-cell">
+              <label>Año 5</label>
+              <input type="number" class="input-blue" id="qty5" value="25000" />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Live preview -->
+      <div class="card">
+        <div class="card-header card-header-navy">
+          <span class="card-title">Vista Previa — Indicadores Calculados</span>
+          <span style="font-size:11px;color:rgba(255,255,255,.6)">Actualización en tiempo real</span>
+        </div>
+        <div class="card-body">
+          <div class="summary-grid">
+            <div class="summary-card">
+              <div class="summary-label">Total Inversión (Año 0)</div>
+              <div class="summary-value" id="prev-inversion">$0</div>
+            </div>
+            <div class="summary-card">
+              <div class="summary-label">Ingreso Bruto Año 1</div>
+              <div class="summary-value" id="prev-ingreso">$0</div>
+            </div>
+            <div class="summary-card">
+              <div class="summary-label">Costo Fijo Anual</div>
+              <div class="summary-value" id="prev-cf">$0</div>
+            </div>
+            <div class="summary-card">
+              <div class="summary-label">Costo Producción / Unidad</div>
+              <div class="summary-value" id="prev-cv">$0</div>
+            </div>
+          </div>
+          <div style="margin-top:1rem">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Ítem</th>
+                  <th style="text-align:right">Año 1</th>
+                  <th style="text-align:right">Año 2</th>
+                  <th style="text-align:right">Año 3</th>
+                  <th style="text-align:right">Año 4</th>
+                  <th style="text-align:right">Año 5</th>
+                </tr>
+              </thead>
+              <tbody id="fc-preview"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <div class="btn-nav">
+        <button class="btn btn-ghost" onclick="goTo('s2')">← Anterior</button>
+        <button class="btn btn-primary" onclick="goTo('s4')">Siguiente →</button>
+      </div>
+    </section>
+
+    <!-- ══════════════════ S4 - MODELO DE NEGOCIO ══════════════════ -->
+    <section class="section" id="s4">
+      <div class="section-header">
+        <h1 class="section-title">6. Modelo de Negocios</h1>
+        <p class="section-desc">Canvas de modelo de negocios (todos los campos son opcionales)</p>
+      </div>
+
+      <div class="card">
+        <div class="card-body">
+          <div class="canvas-grid">
+            <div class="canvas-block">
+              <div class="canvas-block-title">Socios Estratégicos</div>
+              <textarea id="mn_socios" placeholder="¿Quiénes son tus socios clave?"></textarea>
+            </div>
+            <div class="canvas-block">
+              <div class="canvas-block-title">Recursos Clave</div>
+              <textarea id="mn_recursos" placeholder="Recursos físicos, humanos, intelectuales..."></textarea>
+            </div>
+            <div class="canvas-block">
+              <div class="canvas-block-title">Propuesta de Valor</div>
+              <textarea id="mn_propuesta" placeholder="¿Qué valor entrega tu proyecto?"></textarea>
+            </div>
+            <div class="canvas-block">
+              <div class="canvas-block-title">Actividades Clave</div>
+              <textarea id="mn_actividades" placeholder="Actividades esenciales del modelo..."></textarea>
+            </div>
+            <div class="canvas-block green-block">
+              <div class="canvas-block-title">Relación con el Cliente</div>
+              <textarea id="mn_relacion" placeholder="¿Cómo te relacionas con tus clientes?"></textarea>
+            </div>
+            <div class="canvas-block green-block">
+              <div class="canvas-block-title">Segmento de Clientes</div>
+              <textarea id="mn_segmento" placeholder="¿A quiénes va dirigido tu producto?"></textarea>
+            </div>
+            <div class="canvas-block">
+              <div class="canvas-block-title">Canales</div>
+              <textarea id="mn_canales" placeholder="¿Cómo llegas a tus clientes?"></textarea>
+            </div>
+            <div class="canvas-block gray-block" style="grid-column:span 2">
+              <div class="canvas-block-title">Estructura de Costos</div>
+              <textarea id="mn_costos" placeholder="Principales costos del modelo de negocio..."></textarea>
+            </div>
+          </div>
+          <div style="margin-top:.75rem">
+            <div class="canvas-block green-block">
+              <div class="canvas-block-title">Flujo de Ingresos</div>
+              <textarea id="mn_ingresos" placeholder="¿Cómo genera ingresos tu proyecto?"></textarea>
+            </div>
+          </div>
+          <div style="margin-top:.75rem">
+            <div class="canvas-block gray-block">
+              <div class="canvas-block-title">Barreras de Entrada</div>
+              <textarea id="mn_barreras" placeholder="Qué protege tu modelo frente a la competencia..."></textarea>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="btn-nav">
+        <button class="btn btn-ghost" onclick="goTo('s3')">← Anterior</button>
+        <button class="btn btn-primary" onclick="handleDownload()">
+          <svg width="14" height="14" viewBox="0 0 20 20" fill="currentColor"><path d="M10.75 2.75a.75.75 0 00-1.5 0v8.614L6.295 8.235a.75.75 0 10-1.09 1.03l4.25 4.5a.75.75 0 001.09 0l4.25-4.5a.75.75 0 00-1.09-1.03l-2.955 3.129V2.75z"/></svg>
+          Generar Excel
+        </button>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<script>
+// ─── CONFIG ────────────────────────────────────────────────────────────────
+// Change this to your deployed backend URL
+const API_URL = window.BACKEND_URL || 'http://localhost:8000';
+
+// ─── STATE ─────────────────────────────────────────────────────────────────
+let inversiones = [
+  { nombre: 'Máquina procesadora principal', monto: 15000000, vida_util: 10 },
+  { nombre: 'Equipo de envasado automático',  monto: 8000000,  vida_util: 8  },
+  { nombre: 'Infraestructura (bodega/planta)',monto: 12000000, vida_util: 20 },
+];
+let costos_fijos = [
+  { tipo: 'Gastos comunes (luz, agua, gas)', costo_mensual: 300000, observacion: '' },
+  { tipo: 'Mano de Obra',                    costo_mensual: 1000000, observacion: 'Sueldo Base $500.000 - 2 empleados' },
+  { tipo: 'Pago servicios Contador Auditor', costo_mensual: 150000,  observacion: 'Para contabilidad' },
+  { tipo: 'Servicio de plagas',              costo_mensual: 200000,  observacion: 'Control de plagas' },
+  { tipo: 'Servicio de mantención',          costo_mensual: 500000,  observacion: '' },
+  { tipo: 'Servicio de aseo',                costo_mensual: 350000,  observacion: '' },
+  { tipo: 'Publicidad',                      costo_mensual: 150000,  observacion: '' },
+];
+let costos_variables = [
+  { tipo: 'Materia prima principal',   costo: 3500, observacion: 'Costo materia prima por unidad' },
+  { tipo: 'Insumos de producción',     costo: 800,  observacion: 'Insumos varios' },
+  { tipo: 'Mano de obra directa',      costo: 1200, observacion: 'Costo MO por unidad' },
+  { tipo: 'Energía de producción',     costo: 400,  observacion: 'Energía por unidad producida' },
+  { tipo: 'Envase Primario',           costo: 1500, observacion: '' },
+  { tipo: 'Envase Secundario',         costo: 500,  observacion: '' },
+  { tipo: 'Costo distribución',        costo: 250,  observacion: 'Distribución por unidad' },
+];
+
+let currentSection = 's0';
+const sections = ['s0','s1','s2','s3','s4'];
+const doneSections = new Set();
+
+// ─── NAVIGATION ────────────────────────────────────────────────────────────
+function goTo(id) {
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  document.getElementById('nav-'+id)?.classList.add('active');
+  doneSections.add(currentSection);
+  document.getElementById('nav-'+currentSection)?.classList.add('done');
+  currentSection = id;
+  const idx = sections.indexOf(id);
+  document.getElementById('progressFill').style.width = ((idx+1)/sections.length*100)+'%';
+  updatePreviews();
+  window.scrollTo({top:0, behavior:'smooth'});
+}
+
+// ─── RENDER INVERSIONES ────────────────────────────────────────────────────
+function renderInversiones() {
+  const tbody = document.getElementById('inv-tbody');
+  tbody.innerHTML = '';
+  let total = 0;
+  inversiones.forEach((inv, i) => {
+    total += Number(inv.monto) || 0;
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td><input type="text" value="${esc(inv.nombre)}" oninput="inversiones[${i}].nombre=this.value" placeholder="Nombre del activo" /></td>
+      <td><input type="number" class="input-blue" value="${inv.monto}" oninput="inversiones[${i}].monto=Number(this.value);updateInvTotal()" placeholder="0" /></td>
+      <td><input type="number" class="input-blue" value="${inv.vida_util}" oninput="inversiones[${i}].vida_util=Number(this.value)" placeholder="10" /></td>
+      <td><div class="row-actions"><button class="icon-btn" onclick="removeInversion(${i})" title="Eliminar">✕</button></div></td>
+    `;
+    tbody.appendChild(tr);
+  });
+  updateInvTotal();
+}
+function updateInvTotal() {
+  const t = inversiones.reduce((s,x)=>s+(Number(x.monto)||0),0);
+  document.getElementById('inv-total-monto').textContent = fmtClp(t);
+  updatePreviews();
+}
+function addInversion() {
+  inversiones.push({nombre:'',monto:0,vida_util:10});
+  renderInversiones();
+}
+function removeInversion(i) {
+  inversiones.splice(i,1);
+  renderInversiones();
+}
+
+// ─── RENDER COSTOS FIJOS ────────────────────────────────────────────────────
+function renderCostosFijos() {
+  const tbody = document.getElementById('cf-tbody');
+  tbody.innerHTML = '';
+  costos_fijos.forEach((cf, i) => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td><input type="text" value="${esc(cf.tipo)}" oninput="costos_fijos[${i}].tipo=this.value" placeholder="Tipo de costo fijo" /></td>
+      <td><input type="number" class="input-blue" value="${cf.costo_mensual}" oninput="costos_fijos[${i}].costo_mensual=Number(this.value);updateCfTotal()" placeholder="0" /></td>
+      <td><input type="text" value="${esc(cf.observacion)}" oninput="costos_fijos[${i}].observacion=this.value" placeholder="Observación" /></td>
+      <td><div class="row-actions"><button class="icon-btn" onclick="removeCostoFijo(${i})" title="Eliminar">✕</button></div></td>
+    `;
+    tbody.appendChild(tr);
+  });
+  updateCfTotal();
+}
+function updateCfTotal() {
+  const m = costos_fijos.reduce((s,x)=>s+(Number(x.costo_mensual)||0),0);
+  document.getElementById('cf-total-mensual').textContent = fmtClp(m);
+  document.getElementById('cf-total-anual').textContent   = fmtClp(m*12);
+  updatePreviews();
+}
+function addCostoFijo() {
+  costos_fijos.push({tipo:'',costo_mensual:0,observacion:''});
+  renderCostosFijos();
+}
+function removeCostoFijo(i) {
+  costos_fijos.splice(i,1);
+  renderCostosFijos();
+}
+
+// ─── RENDER COSTOS VARIABLES ────────────────────────────────────────────────
+function renderCostosVariables() {
+  const tbody = document.getElementById('cv-tbody');
+  tbody.innerHTML = '';
+  costos_variables.forEach((cv, i) => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td><input type="text" value="${esc(cv.tipo)}" oninput="costos_variables[${i}].tipo=this.value" placeholder="Tipo de costo variable" /></td>
+      <td><input type="number" class="input-blue" value="${cv.costo}" oninput="costos_variables[${i}].costo=Number(this.value);updateCvTotal()" placeholder="0" /></td>
+      <td><input type="text" value="${esc(cv.observacion)}" oninput="costos_variables[${i}].observacion=this.value" placeholder="Observación" /></td>
+      <td><div class="row-actions"><button class="icon-btn" onclick="removeCostoVariable(${i})" title="Eliminar">✕</button></div></td>
+    `;
+    tbody.appendChild(tr);
+  });
+  updateCvTotal();
+}
+function updateCvTotal() {
+  const t = costos_variables.reduce((s,x)=>s+(Number(x.costo)||0),0);
+  document.getElementById('cv-total').textContent = fmtClp(t);
+  updatePreviews();
+}
+function addCostoVariable() {
+  costos_variables.push({tipo:'',costo:0,observacion:''});
+  renderCostosVariables();
+}
+function removeCostoVariable(i) {
+  costos_variables.splice(i,1);
+  renderCostosVariables();
+}
+
+// ─── PREVIEW CALCULATIONS ──────────────────────────────────────────────────
+function updatePreviews() {
+  const totalInv  = inversiones.reduce((s,x)=>s+(Number(x.monto)||0),0);
+  const cfMensual = costos_fijos.reduce((s,x)=>s+(Number(x.costo_mensual)||0),0);
+  const cfAnual   = cfMensual * 12;
+  const cvUnit    = costos_variables.reduce((s,x)=>s+(Number(x.costo)||0),0);
+  const precio    = Number(document.getElementById('precio_venta')?.value)||0;
+  const qty1      = Number(document.getElementById('qty1')?.value)||0;
+  const ingresoY1 = precio * qty1;
+
+  setEl('prev-inversion', fmtClp(totalInv));
+  setEl('prev-ingreso',   fmtClp(ingresoY1));
+  setEl('prev-cf',        fmtClp(cfAnual));
+  setEl('prev-cv',        fmtClp(cvUnit));
+
+  // Flujo de caja preview table
+  const qtys = [1,2,3,4,5].map(i=>Number(document.getElementById('qty'+i)?.value)||0);
+  const tbody = document.getElementById('fc-preview');
+  if (!tbody) return;
+  const rows = [
+    { label:'Ingreso Bruto',   vals: qtys.map(q=>q*precio) },
+    { label:'Costo Variable',  vals: qtys.map(q=>q*cvUnit) },
+    { label:'Costo Fijo',      vals: qtys.map(()=>cfAnual) },
+    { label:'Total Egresos',   vals: qtys.map(q=>q*cvUnit+cfAnual) },
+    { label:'Utilidad Bruta',  vals: qtys.map(q=>q*precio - (q*cvUnit+cfAnual)) },
+  ];
+  tbody.innerHTML = rows.map(r => `
+    <tr>
+      <td style="font-weight:${r.label.startsWith('U')?'600':'400'};color:${r.label.startsWith('U')?'var(--navy)':'inherit'}">${r.label}</td>
+      ${r.vals.map(v=>`<td style="text-align:right;font-size:12px;${r.label.startsWith('U')?'font-weight:600;color:'+((v>=0)?'var(--forest)':'var(--danger)'):''}">${fmtClpShort(v)}</td>`).join('')}
+    </tr>
+  `).join('');
+}
+
+// ─── DOWNLOAD ──────────────────────────────────────────────────────────────
+async function handleDownload() {
+  const btn = document.getElementById('downloadBtn');
+  btn.classList.add('loading');
+  btn.textContent = 'Generando...';
+
+  const payload = {
+    nombre_proyecto: document.getElementById('nombre_proyecto')?.value || 'Proyecto',
+    precio_venta: Number(document.getElementById('precio_venta')?.value) || 0,
+    tasa_interes: (Number(document.getElementById('tasa_interes')?.value) || 20) / 100,
+    tasa_cb: (Number(document.getElementById('tasa_cb')?.value) || 15) / 100,
+    inversiones: inversiones.filter(x=>x.nombre||x.monto),
+    costos_fijos: costos_fijos.filter(x=>x.tipo||x.costo_mensual),
+    costos_variables: costos_variables.filter(x=>x.tipo||x.costo),
+    cantidades_venta: [1,2,3,4,5].map(i=>Number(document.getElementById('qty'+i)?.value)||0),
+    modelo_negocio: {
+      socios_estrategicos: v('mn_socios'),
+      recursos_clave:      v('mn_recursos'),
+      propuesta_valor:     v('mn_propuesta'),
+      actividades_clave:   v('mn_actividades'),
+      relacion_cliente:    v('mn_relacion'),
+      canales:             v('mn_canales'),
+      segmento_clientes:   v('mn_segmento'),
+      estructura_costos:   v('mn_costos'),
+      flujo_ingresos:      v('mn_ingresos'),
+      barreras_entrada:    v('mn_barreras'),
+    }
+  };
+
+  try {
+    const res = await fetch(`${API_URL}/generar-excel`, {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify(payload)
+    });
+    if (!res.ok) throw new Error('Error del servidor: ' + res.status);
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `Flujo_de_Caja_${(payload.nombre_proyecto||'Proyecto').replace(/\s+/g,'_')}.xlsx`;
+    a.click();
+    URL.revokeObjectURL(url);
+    showToast('✓ Excel generado y descargado correctamente');
+  } catch(err) {
+    showToast('✗ ' + err.message, true);
+  } finally {
+    btn.classList.remove('loading');
+    btn.innerHTML = `<svg viewBox="0 0 20 20" fill="currentColor" width="16" height="16"><path d="M10.75 2.75a.75.75 0 00-1.5 0v8.614L6.295 8.235a.75.75 0 10-1.09 1.03l4.25 4.5a.75.75 0 001.09 0l4.25-4.5a.75.75 0 00-1.09-1.03l-2.955 3.129V2.75z"/><path d="M3.5 12.75a.75.75 0 00-1.5 0v2.5A2.75 2.75 0 004.75 18h10.5A2.75 2.75 0 0018 15.25v-2.5a.75.75 0 00-1.5 0v2.5c0 .69-.56 1.25-1.25 1.25H4.75c-.69 0-1.25-.56-1.25-1.25v-2.5z"/></svg> Generar Excel`;
+  }
+}
+
+// ─── UTILITIES ─────────────────────────────────────────────────────────────
+function fmtClp(n) {
+  return '$' + Math.round(n).toLocaleString('es-CL');
+}
+function fmtClpShort(n) {
+  const abs = Math.abs(n);
+  const s = abs >= 1e6 ? (abs/1e6).toFixed(1)+'M' : abs >= 1e3 ? (abs/1e3).toFixed(0)+'K' : Math.round(abs).toString();
+  return (n<0?'-':'')+'$'+s;
+}
+function esc(s) {
+  return (s||'').replace(/"/g,'&quot;').replace(/</g,'&lt;');
+}
+function v(id) { return document.getElementById(id)?.value || ''; }
+function setEl(id, val) { const el = document.getElementById(id); if(el) el.textContent=val; }
+
+function showToast(msg, isError=false) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast' + (isError?' error':'');
+  t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'), 3500);
+}
+
+// ─── INIT ──────────────────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+  renderInversiones();
+  renderCostosFijos();
+  renderCostosVariables();
+  updatePreviews();
+
+  // Live preview on qty/price change
+  ['qty1','qty2','qty3','qty4','qty5','precio_venta','tasa_interes','tasa_cb']
+    .forEach(id => document.getElementById(id)?.addEventListener('input', updatePreviews));
+});
+</script>
+</body>
+</html>
